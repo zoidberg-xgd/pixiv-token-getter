@@ -13,6 +13,8 @@
 
 - ✅ **易于集成** - 简洁的 API，方便集成
 - ✅ **两种登录模式** - 交互式和无头登录
+- ✅ **持久化浏览器 profile** - 浏览器资料缓存于 `~/.config/pixiv-token-getter/profile`，首次登录后后续运行通常免登录；API 传 `userDataDir: ''` 可强制使用全新临时 profile
+- ✅ **顺带抓取网页 Cookie** - 登录成功后额外返回 Pixiv 网页会话 cookie（如 `PHPSESSID`）于 `web_cookies`，供网页抓取复用
 - ✅ **TypeScript 支持** - 完整的 TypeScript 类型定义
 - ✅ **CLI 工具** - 命令行界面
 - ✅ **灵活配置** - 可自定义超时、回调等

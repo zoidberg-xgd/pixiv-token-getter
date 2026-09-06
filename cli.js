@@ -26,6 +26,10 @@ function saveTokenToFile(tokenInfo, outputPath) {
     token_type: tokenInfo.token_type,
     scope: tokenInfo.scope,
     user: tokenInfo.user,
+    // 网页登录 cookie（如 PHPSESSID），下游网页抓取可复用；没有时不写入。
+    ...(tokenInfo.web_cookies && Object.keys(tokenInfo.web_cookies).length
+      ? { web_cookies: tokenInfo.web_cookies }
+      : {}),
     obtained_at: obtainedAt.toISOString(),
   };
 
@@ -63,6 +67,9 @@ function showHelp() {
 '  - Interactive login: Browser window opens automatically, complete login in browser' + '\n' +
 '  - Headless login: Requires correct username and password, no browser window shown' + '\n' +
 '  - Passing the password via environment variables keeps it out of shell history' + '\n' +
+'  - The browser profile is persisted (~/.config/pixiv-token-getter/profile), so after the' + '\n' +
+'    first successful login you usually stay logged in on later runs (API: userDataDir option)' + '\n' +
+'  - On success the output file also includes web_cookies (e.g. PHPSESSID) when available' + '\n' +
 '  - Token files contain sensitive information and are written with 0600 permissions'
   );
 }

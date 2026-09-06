@@ -13,6 +13,8 @@
 
 - ✅ **Easy Integration** - Clean API for easy integration
 - ✅ **Two Login Modes** - Interactive and headless login
+- ✅ **Persistent Profile** - Browser profile is cached (`~/.config/pixiv-token-getter/profile`), so you usually stay logged in across runs; pass `userDataDir: ''` for a fresh profile
+- ✅ **Web Cookies** - On success, also captures Pixiv web-session cookies (e.g. `PHPSESSID`) as `web_cookies` for downstream web scraping
 - ✅ **TypeScript Support** - Full TypeScript type definitions
 - ✅ **CLI Tool** - Command-line interface
 - ✅ **Flexible Configuration** - Customizable timeout, callbacks, and more
