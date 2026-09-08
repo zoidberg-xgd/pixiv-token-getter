@@ -47,7 +47,7 @@
   "bugs": {
     "url": "https://github.com/redtidev1918/pixiv-token-getter/issues"
   },
-  "homepage": "https://github.com/redtidev1918/pixiv-token-getter#readme",
+  "homepage": "https://redtidev1918.github.io/pixiv-token-getter/",
   "sideEffects": false,
   "dependencies": {
     "puppeteer": "^25.9.0",

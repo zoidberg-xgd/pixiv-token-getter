@@ -1,0 +1,14 @@
+- 中文
+  - [文档首页](README.zh-CN.md)
+  - [安装](README.zh-CN.md#安装)
+  - [快速开始](README.zh-CN.md#快速开始)
+  - [API 文档](README.zh-CN.md#api-文档)
+  - [CLI 选项](README.zh-CN.md#cli-选项)
+  - [常见问题](README.zh-CN.md#常见问题)
+- English
+  - [Documentation](README.md)
+  - [API](README.md#api-documentation)
+  - [CLI options](README.md#cli-options)
+- 项目
+  - [npm](https://www.npmjs.com/package/pixiv-token-getter)
+  - [Releases](https://github.com/redtidev1918/pixiv-token-getter/releases)
