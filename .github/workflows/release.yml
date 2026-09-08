@@ -1,149 +1,32 @@
-name: CI & Release
+name: Release
 
-# 统一为 release-please 单系统：
-# - 每次 push main / PR：跑 test job（语法检查 + 冒烟测试）。
-# - main 上有 release-worthy 提交时，release-please job 自动开/更发版 PR；
-# - 合并发版 PR 后同一个 run 内 release-please 推 tag，publish job 在本 run 内发布
-#   npm（OIDC）并创建 GitHub Release。内置 GITHUB_TOKEN 即可（同 run 内 job 不受
-#   「推 tag 不触发新工作流」限制），无需 PAT。
-# - 仍支持推 v* tag / workflow_dispatch（填 tag）重跑发布。
 on:
+  pull_request:
   push:
     branches: [main]
-    tags: ['v*']
-  pull_request:
+  schedule:
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: 'Dry run（仅测试，不发布）'
-        type: boolean
-        default: false
-      tag:
-        description: '要重发布的已有 tag（如 v2.3.0）；main push 自动发版时留空'
-        type: string
-        default: ''
+      version: {description: "Existing version; blank reads the manifest", required: false, type: string}
+      dry_run: {description: "Build and validate without publishing", required: false, default: false, type: boolean}
+      force: {description: "Rerun a healthy version", required: false, default: false, type: boolean}
+      repair: {description: "Repair the current incomplete version", required: false, default: false, type: boolean}
+      stage: {description: "Recovery stage label", required: false, default: all, type: string}
 
 permissions:
-  contents: write        # release-please 推 tag / 建 Release
-  pull-requests: write   # release-please 发版 PR
-  id-token: write        # npm provenance
-
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+  contents: write
+  pull-requests: write
+  packages: write
+  id-token: write
 
 jobs:
-  test:
-    name: Test (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [22, 24]
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Syntax-check all JS files
-        run: |
-          fails=0
-          for f in $(git ls-files '*.js'); do
-            node --check "$f" || fails=$((fails+1))
-          done
-          exit $fails
-
-      - name: CLI smoke tests (no deps needed)
-        run: |
-          node cli.js --version
-          node cli.js --help > /dev/null
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: 'true'
-
-      - name: API smoke test
-        run: |
-          node -e "const ptg = require('./index.js'); for (const k of ['getTokenInteractive','getTokenHeadless','loginInteractive','loginHeadless']) { if (typeof ptg[k] !== 'function') throw new Error('missing export: ' + k); } console.log('exports OK:', Object.keys(ptg).filter(k => k !== 'default').join(', '));"
-
-  release-please:
-    runs-on: ubuntu-latest
-    outputs:
-      releases_created: ${{ steps.rp.outputs.releases_created }}
-      tag_name: ${{ steps.rp.outputs.tag_name }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Release Please
-        id: rp
-        uses: googleapis/release-please-action@v4
-        with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-
-  publish:
-    name: Publish to npm & GitHub Release
-    needs: [test, release-please]
-    if: >-
-      !cancelled() &&
-      needs.test.result == 'success' &&
-      !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) &&
-      (
-        github.event_name != 'push' ||
-        github.ref == 'refs/heads/main' && needs.release-please.outputs.releases_created == 'true' ||
-        startsWith(github.ref, 'refs/tags/') ||
-        (github.event_name == 'workflow_dispatch' && inputs.tag != '')
-      )
-    runs-on: ubuntu-latest
-    env:
-      RELEASE_TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag || github.ref_name }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name || inputs.tag || github.ref }}
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org/
-
-      - name: Verify tag matches package.json version
-        run: |
-          TAG_VERSION="${RELEASE_TAG#v}"
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag ${RELEASE_TAG} != package.json $PKG_VERSION"
-            exit 1
-          fi
-          echo "Releasing $PKG_VERSION"
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: 'true'
-
-      - name: Update npm (trusted publishing needs npm >= 11.5.1)
-        run: npm install -g npm@latest
-
-      - name: Publish to npm (trusted publishing - no token needed)
-        run: npm publish --provenance --access public
-
-      - name: Create or update GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PREV=$(git describe --tags --abbrev=0 "${RELEASE_TAG}^" 2>/dev/null || git rev-list --max-parents=0 HEAD | head -1)
-          {
-            echo "## Changes"
-            echo
-            git log --pretty=format:'- %s (%h)' "${PREV}..${RELEASE_TAG}" | grep -v -- '- chore(release)' || true
-            echo
-          } > RELEASE_NOTES.md
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG" --notes-file RELEASE_NOTES.md
-          else
-            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes-file RELEASE_NOTES.md
-          fi
+  release:
+    uses: redtidev1918/release-infra/.github/workflows/reusable-release.yml@v1
+    with:
+      version: ${{ inputs.version || '' }}
+      dry_run: ${{ github.event_name == 'pull_request' || inputs.dry_run || false }}
+      force: ${{ inputs.force || false }}
+      repair: ${{ github.event_name == 'pull_request' || inputs.repair || false }}
+      stage: ${{ inputs.stage || 'all' }}
+    secrets: inherit
